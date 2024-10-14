@@ -18,7 +18,7 @@ data class HuffmanTreeNode<T>(
         fun explorer(tree: HuffmanTreeNode<T>, path: List<Boolean> = listOf()) {
             if (tree.isLeaf()) {
                 tree.symbol?.let { symbol ->
-                    map.put(symbol, path)
+                    map[symbol] = path
                     println("${Char((symbol as Byte).toUShort())}\t=\t${tree.frequency}: $path")
                 } ?: {
                     throw IllegalArgumentException("Bad Huffman Tree")
