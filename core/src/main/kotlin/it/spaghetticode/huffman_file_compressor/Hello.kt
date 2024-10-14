@@ -6,7 +6,8 @@ import java.io.File
 
 fun main(args: Array<String>) {
     val before = System.currentTimeMillis()
-    val map = HuffmanTreeNode.huffmanize(countOccurence(File("test.bin"))).getCompressionMap()
+    val tree = HuffmanTreeNode.huffmanize(countOccurence(File("test.bin")))
+    tree.doCompression(File("test.bin"), File("out.bin"))
     val after = System.currentTimeMillis()
     println("mills: " + (after - before))
 }
