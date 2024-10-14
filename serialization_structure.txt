@@ -1,6 +1,8 @@
 len -> 1 byte: bytes nel buffer di lettura: 1 - 255
-per ogni ramo dell'albero:
+symbols -> 4 bytes: numero di simboli nell'albero
+per ogni foglia dell'albero:
     (len bytes symbol da sostituire)
-    (n bits di sostituzione)
+    (n -> 1 byte: bits di sostituzione)
     (ceil(n/8) bits variabili che rappresentano la compressione)
 bytes bufferati con il file compresso
+1 byte: numero di bit aggiunti come padding alla fine dell'ultimo byte scritto
