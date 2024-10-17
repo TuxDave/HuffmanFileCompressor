@@ -1,5 +1,6 @@
 package it.spaghetticode.huffman_file_compressor.core
 
+import it.spaghetticode.huffman_file_compressor.core.HuffmanTreeNode.Companion.huffmanize
 import java.io.BufferedOutputStream
 import java.io.File
 import java.util.*
@@ -129,67 +130,69 @@ private data class HuffmanTreeNode<T>(
             }
             return pq.remove()
         }
+    }
+}
 
-        fun zip(input: File, output: File): Boolean {
-            val tree = huffmanize(countOccurence(input))
-            return tree.doCompression(input, output)
-        }
+fun zip(input: File, output: File): Boolean {
+    val tree = huffmanize(countOccurence(input))
+    return tree.doCompression(input, output)
+}
 
-        fun unzip(zipped: File, unzipped: File): Boolean {
-            //retrieving information
-            val r = zipped.inputStream().buffered()
-            val w = unzipped.outputStream().buffered()
+fun unzip(zipped: File, unzipped: File): Boolean {
+    //retrieving information
+    val r = zipped.inputStream().buffered()
+    val w = unzipped.outputStream().buffered()
 
-            var rBuff = ByteArray(1)
-            r.read(rBuff)
-            val len = rBuff[0]
+    var rBuff = ByteArray(1)
+    r.read(rBuff)
+    val len = rBuff[0]
 
-            rBuff = ByteArray(4)
-            r.read(rBuff)
-            val symbols = rBuff
-                .reversed()
-                .mapIndexed { i, it ->
-                    it.toInt() shl (i * 8)
-                }.sum()
+    rBuff = ByteArray(4)
+    r.read(rBuff)
+    val symbols = rBuff
+        .reversed()
+        .mapIndexed { i, it ->
+            it.toInt() shl (i * 8)
+        }.sum()
 
-            val map = HashMap<List<Boolean>, Byte>()
-            run {
-                val nBytesBuff = ByteArray(len.toInt())
-                val nBitsBuff = ByteArray(1)
-                lateinit var seqBitsBuff: ByteArray
-                for (symbol in 0..<symbols) {
-                    r.read(nBytesBuff)
-                    r.read(nBitsBuff)
+    val map = HashMap<List<Boolean>, Byte>()
+    run {
+        val nBytesBuff = ByteArray(len.toInt())
+        val nBitsBuff = ByteArray(1)
+        lateinit var seqBitsBuff: ByteArray
+        for (symbol in 0..<symbols) {
+            r.read(nBytesBuff)
+            r.read(nBitsBuff)
 
-                    val bytes = ceil(nBytesBuff[0] / 8.0).toInt()
-                    seqBitsBuff = ByteArray(bytes)
-                    r.read(seqBitsBuff) // contiene adesso la sequenza shortenata, va shiftata
-                    val bitArr = BooleanArray(nBitsBuff[0].toInt())
-                    seqBitsBuff.forEachIndexed { i, it ->
-                        fromByteToBooleans(it).forEachIndexed { i2, it2 ->
-                            bitArr[i * 8 + i2] = it2
-                        }
-                    }
-                    map[bitArr.toList()] = nBytesBuff[0]
+            val bytes = ceil(nBitsBuff[0] / 8.0).toInt()
+            seqBitsBuff = ByteArray(bytes)
+            r.read(seqBitsBuff) // contiene adesso la sequenza shortenata, va shiftata
+            val bitArr = BooleanArray(bytes * 8)
+            seqBitsBuff.forEachIndexed { i, it ->
+                fromByteToBooleans(it).forEachIndexed { i2, it2 ->
+                    bitArr[i * 8 + i2] = it2
                 }
             }
-
-            var bitsBuff = listOf<Boolean>()
-            rBuff = ByteArray(len.toInt())
-            while (r.read(rBuff) != -1) {
-                bitsBuff += fromByteToBooleans(rBuff[0]).toList()
-                for (i in bitsBuff.size - 1 downTo 0) {
-                    if(map.containsKey(bitsBuff.drop(i))){
-//                        w.write(map[bitsBuff.drop(i)])
-                        //TODO: la mappa contiene questa sequenza, scrivere i bytes ottenuti dalla mappa
-                    }
-                }
-            }
-
-            r.close()
-            w.close()
-
-            return true
+            map[bitArr.dropLast(bytes * 8 - nBitsBuff[0])] = nBytesBuff[0]
+            //TODO: vedere se la mappa è corretta (confrontando le entry dal debugger, se ok passa al blocco dopo)
         }
     }
+
+    var bitsBuff = listOf<Boolean>()
+    rBuff = ByteArray(len.toInt())
+    while (r.read(rBuff) != -1) {
+        bitsBuff += fromByteToBooleans(rBuff[0]).toList()
+        for (i in bitsBuff.size - 1 downTo 0) {
+            val value = map[bitsBuff.drop(i)]
+            if(value != null) {
+                w.write(byteArrayOf(value))
+                break
+            }
+        }
+    }
+
+    r.close()
+    w.close()
+
+    return true
 }

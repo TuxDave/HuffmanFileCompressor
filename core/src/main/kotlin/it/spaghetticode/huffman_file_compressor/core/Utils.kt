@@ -32,7 +32,7 @@ fun fromQueueToByte(bits: Queue<Byte>): Byte? {
 fun fromByteToBooleans(b: Byte): BooleanArray {
     var b = b.toInt()
     val ret = BooleanArray(8)
-    for(i in 7 ..< 0) {
+    for(i in 7 downTo 0) {
         if(b % 2 != 0) {
             ret[i] = true
         }
