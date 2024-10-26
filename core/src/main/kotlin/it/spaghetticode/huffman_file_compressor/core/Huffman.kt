@@ -1,6 +1,5 @@
 package it.spaghetticode.huffman_file_compressor.core
 
-import com.sun.org.apache.xpath.internal.operations.Bool
 import it.spaghetticode.huffman_file_compressor.core.HuffmanTreeNode.Companion.huffmanize
 import java.io.BufferedOutputStream
 import java.io.File
@@ -22,7 +21,7 @@ private data class HuffmanTreeNode<T>(
         return left == null && right == null
     }
 
-    /*private*/ fun getCompressionMap(): Map<T, List<Boolean>> {
+    private fun getCompressionMap(): Map<T, List<Boolean>> {
         val map: HashMap<T, List<Boolean>> = HashMap()
         fun explorer(tree: HuffmanTreeNode<T>, path: List<Boolean> = listOf()) {
             if (tree.isLeaf()) {
@@ -62,9 +61,9 @@ private data class HuffmanTreeNode<T>(
             }
         }
 
-        if(wBuff.isEmpty()) {
+        if (wBuff.isEmpty()) {
             w.write(byteArrayOf(0))
-        } else if (wBuff.size in 1..< 8) {
+        } else if (wBuff.size in 1..<8) {
             val n: Byte = (8 - wBuff.size).toByte()
             wBuff.addAll(ByteArray(n.toInt()).toList())
             fromQueueToByte(wBuff)?.let { it ->
@@ -140,7 +139,7 @@ private data class HuffmanTreeNode<T>(
     }
 }
 
-fun zip(input: File, output: File): Boolean{
+fun zip(input: File, output: File): Boolean {
     val tree = huffmanize(countOccurence(input))
     return tree.doCompression(input, output)
 }
@@ -185,7 +184,7 @@ fun unzip(zipped: File, unzipped: File): Boolean {
     run {
         val byte = ByteArray(1)
         r.read(byte)
-        if(byte[0] != MAGIC) {
+        if (byte[0] != MAGIC) {
             return false
         }
     }
@@ -193,8 +192,9 @@ fun unzip(zipped: File, unzipped: File): Boolean {
     var bitsBuff = listOf<Boolean>()
     rBuff = ByteArray(len.toInt())
     var red = 0
+    val buffSize = map.keys.maxBy { it.size }.size
     do {
-        if(bitsBuff.size < len * 8) {
+        if (bitsBuff.size < buffSize) {
             // legge e se il file è finito termina
             red = r.read(rBuff)
             if (red != -1) {
@@ -209,7 +209,12 @@ fun unzip(zipped: File, unzipped: File): Boolean {
                 break
             }
         }
+//        if(bitsBuff.size >= buffSize && r.available() == -1) {
+//            break
+//        }
     } while (red != -1)
+
+    //TODO: gestire l'ultimo byte che indica il padding e non è parte di informazione
 
     r.close()
     w.close()
