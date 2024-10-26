@@ -1,9 +1,18 @@
 package it.spaghetticode.huffman_file_compressor.core
 
 import java.io.File
+import java.util.LinkedList
 import java.util.Queue
 import java.util.Scanner
 import kotlin.math.pow
+
+fun BooleanArray.toQueue(): Queue<Byte> {
+    val ret = LinkedList<Byte>()
+    for(b in this) {
+        ret.push(if(b) 1 else 0)
+    }
+    return ret
+}
 
 fun countOccurence(f: File): HashMap<Byte, Int> {
     val occurence: HashMap<Byte, Int> = hashMapOf()
@@ -17,6 +26,9 @@ fun countOccurence(f: File): HashMap<Byte, Int> {
     return occurence
 }
 
+/**
+ * @return false if no enought bits (min 8)
+ * */
 fun fromQueueToByte(bits: Queue<Byte>): Byte? {
     if(bits.size < 8) {
         return null
@@ -30,7 +42,7 @@ fun fromQueueToByte(bits: Queue<Byte>): Byte? {
 }
 
 fun fromByteToBooleans(b: Byte): BooleanArray {
-    var b = b.toInt()
+    var b = b.toUByte().toInt()
     val ret = BooleanArray(8)
     for(i in 7 downTo 0) {
         if(b % 2 != 0) {

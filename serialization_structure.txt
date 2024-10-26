@@ -1,5 +1,6 @@
 len -> 1 byte: bytes nel buffer di lettura: 1 - 255
 symbols -> 4 bytes: numero di simboli nell'albero
+69: magic number
 per ogni foglia dell'albero:
     (len bytes symbol da sostituire)
     (n -> 1 byte: bits di sostituzione)

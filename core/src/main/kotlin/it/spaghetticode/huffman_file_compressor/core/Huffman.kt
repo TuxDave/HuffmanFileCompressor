@@ -1,5 +1,6 @@
 package it.spaghetticode.huffman_file_compressor.core
 
+import com.sun.org.apache.xpath.internal.operations.Bool
 import it.spaghetticode.huffman_file_compressor.core.HuffmanTreeNode.Companion.huffmanize
 import java.io.BufferedOutputStream
 import java.io.File
@@ -8,6 +9,8 @@ import kotlin.Char
 import kotlin.collections.HashMap
 import kotlin.math.ceil
 import kotlin.math.pow
+
+const val MAGIC: Byte = 69
 
 private data class HuffmanTreeNode<T>(
     val frequency: Int,
@@ -19,13 +22,13 @@ private data class HuffmanTreeNode<T>(
         return left == null && right == null
     }
 
-    private fun getCompressionMap(): Map<T, List<Boolean>> {
+    /*private*/ fun getCompressionMap(): Map<T, List<Boolean>> {
         val map: HashMap<T, List<Boolean>> = HashMap()
         fun explorer(tree: HuffmanTreeNode<T>, path: List<Boolean> = listOf()) {
             if (tree.isLeaf()) {
                 tree.symbol?.let { symbol ->
                     map[symbol] = path
-                    println("${Char((symbol as Byte).toUShort())}\t=\t${tree.frequency}: $path")
+                    println("${Char((symbol as Byte).toUShort())}, $symbol\t=\t${tree.frequency}: $path")
                 } ?: {
                     throw IllegalArgumentException("Bad Huffman Tree")
                 }
@@ -48,6 +51,8 @@ private data class HuffmanTreeNode<T>(
             return false
         }
 
+        w.write(byteArrayOf(MAGIC))
+
         val rBuff = ByteArray(1)
         var wBuff: Queue<Byte> = LinkedList<Byte>()
         while (r.read(rBuff) != -1) {
@@ -57,7 +62,9 @@ private data class HuffmanTreeNode<T>(
             }
         }
 
-        if (wBuff.size < 8) {
+        if(wBuff.isEmpty()) {
+            w.write(byteArrayOf(0))
+        } else if (wBuff.size in 1..< 8) {
             val n: Byte = (8 - wBuff.size).toByte()
             wBuff.addAll(ByteArray(n.toInt()).toList())
             fromQueueToByte(wBuff)?.let { it ->
@@ -133,7 +140,7 @@ private data class HuffmanTreeNode<T>(
     }
 }
 
-fun zip(input: File, output: File): Boolean {
+fun zip(input: File, output: File): Boolean{
     val tree = huffmanize(countOccurence(input))
     return tree.doCompression(input, output)
 }
@@ -156,40 +163,53 @@ fun unzip(zipped: File, unzipped: File): Boolean {
         }.sum()
 
     val map = HashMap<List<Boolean>, Byte>()
-    run {
-        val nBytesBuff = ByteArray(len.toInt())
-        val nBitsBuff = ByteArray(1)
-        lateinit var seqBitsBuff: ByteArray
-        for (symbol in 0..<symbols) {
-            r.read(nBytesBuff)
-            r.read(nBitsBuff)
+    val nBytesBuff = ByteArray(len.toInt())
+    val nBitsBuff = ByteArray(1)
+    lateinit var seqBitsBuff: ByteArray
+    for (symbol in 0..<symbols) {
+        r.read(nBytesBuff)
+        r.read(nBitsBuff)
 
-            val bytes = ceil(nBitsBuff[0] / 8.0).toInt()
-            seqBitsBuff = ByteArray(bytes)
-            r.read(seqBitsBuff) // contiene adesso la sequenza shortenata, va shiftata
-            val bitArr = BooleanArray(bytes * 8)
-            seqBitsBuff.forEachIndexed { i, it ->
-                fromByteToBooleans(it).forEachIndexed { i2, it2 ->
-                    bitArr[i * 8 + i2] = it2
-                }
+        val bytes = ceil(nBitsBuff[0] / 8.0).toInt()
+        seqBitsBuff = ByteArray(bytes)
+        r.read(seqBitsBuff) // contiene adesso la sequenza shortenata, va shiftata
+        val bitArr = BooleanArray(bytes * 8)
+        seqBitsBuff.forEachIndexed { i, it ->
+            fromByteToBooleans(it).forEachIndexed { i2, it2 ->
+                bitArr[i * 8 + i2] = it2
             }
-            map[bitArr.dropLast(bytes * 8 - nBitsBuff[0])] = nBytesBuff[0]
-            //TODO: vedere se la mappa è corretta (confrontando le entry dal debugger, se ok passa al blocco dopo)
+        }
+        map[bitArr.drop(bytes * 8 - nBitsBuff[0])] = nBytesBuff[0]
+    }
+
+    run {
+        val byte = ByteArray(1)
+        r.read(byte)
+        if(byte[0] != MAGIC) {
+            return false
         }
     }
 
     var bitsBuff = listOf<Boolean>()
     rBuff = ByteArray(len.toInt())
-    while (r.read(rBuff) != -1) {
-        bitsBuff += fromByteToBooleans(rBuff[0]).toList()
+    var red = 0
+    do {
+        if(bitsBuff.size < len * 8) {
+            // legge e se il file è finito termina
+            red = r.read(rBuff)
+            if (red != -1) {
+                bitsBuff += fromByteToBooleans(rBuff[0]).toList()
+            }
+        }
         for (i in bitsBuff.size - 1 downTo 0) {
-            val value = map[bitsBuff.drop(i)]
-            if(value != null) {
+            val value = map[bitsBuff.dropLast(i)]
+            if (value != null) {
                 w.write(byteArrayOf(value))
+                bitsBuff = bitsBuff.drop(bitsBuff.size - i)
                 break
             }
         }
-    }
+    } while (red != -1)
 
     r.close()
     w.close()
