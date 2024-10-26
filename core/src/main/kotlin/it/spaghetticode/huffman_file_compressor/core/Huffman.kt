@@ -27,7 +27,7 @@ private data class HuffmanTreeNode<T>(
             if (tree.isLeaf()) {
                 tree.symbol?.let { symbol ->
                     map[symbol] = path
-                    println("${Char((symbol as Byte).toUShort())}, $symbol\t=\t${tree.frequency}: $path")
+                    // println("${Char((symbol as Byte).toUShort())}, $symbol\t=\t${tree.frequency}: $path")
                 } ?: {
                     throw IllegalArgumentException("Bad Huffman Tree")
                 }
